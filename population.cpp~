@@ -1,0 +1,492 @@
+/*
+ * population.cpp
+ *
+ *  Created on: Mar 16, 2013
+ *      Author: sandeep
+ */
+
+#include "population.h"
+#include "stability.h"
+#include "modelFunctions.h"
+#include "randomv.h"
+#include <set>
+#include <unordered_map>
+#include <map>
+#include <math.h>
+#include <cmath>
+#include <fstream>
+#include <limits>
+#include <algorithm>
+#include <vector>
+#include <sstream>
+#include<Eigen/Core>
+using namespace Eigen;
+
+using namespace std;
+
+population::population(int ploidy){
+	numGenerations=1;
+	stableEquilibrium = false;
+	polymorphisms = 1;
+	setAlleleCounter(0);
+	setPloidy(ploidy);	
+}
+
+void population::evolve(ofstream &fse){
+	mutate(fse);
+	updateAlleleFrequencies();
+	
+	propagate(fse);
+	updateAlleleFrequencies();
+	computeMeanFitness();
+	if(ploidy==2){
+		areBalanced();
+	}
+	numGenerations++;
+}
+
+double population::FindNeutralSphere(){
+	  r0 = modelFunctions::getC()*sqrt(2./(double)N);
+	  return r0;
+}
+
+void population::printInitialAlleles(ofstream &fse){
+	
+	for (unordered_map<string,allele *>::iterator it = alleles.begin(); it != alleles.end(); ++it){
+		allele &al = *((*it).second);
+		fse<<al.getId()<<' '<<al.getStringId()<<' '<<numGenerations;
+		Matrix<double,Dynamic,1> newRv = al.getPosition();
+		for(int j=0; j<newRv.rows();++j){
+			fse<<' '<<newRv(j,0);
+		}
+		fse<<' '<<al.getW()<<endl; //parent
+		alleleCounter++;
+	}
+}
+
+void population::printStatus(ofstream &fp_out, ofstream &fts, ofstream &fsg){
+	/* unused
+	*  //make a histogram-vector for currently balanced alleles
+	*  vector<int> h; 
+	*/
+	int counter = 0;
+	computeMeanFitness();
+	for (unordered_map<string,allele *>::iterator it = alleles.begin(); it != alleles.end(); ++it){
+		double wi = (*it).second->getW();
+		double si = 0;
+		if (abs(wi - meanFitness) < numeric_limits<double>::min()){
+			si = 1;
+		}else{
+			si = wi/meanFitness-1;
+		}
+		Matrix<double,Dynamic,1> rvi = (*it).second->getPosition();
+		double pi = (*it).second->getFrequency();
+		int idi = (*it).second->getId();
+		int age = numGenerations - (*it).second->getBirthday();
+		if(pi<=0){
+			continue;
+		}
+		fp_out << numGenerations <<' ';         // 1. time (generations)
+		fp_out <<pi<< ' ';               // 2. frequency (p)
+		for(int j=0; j<rvi.rows(); j++){
+			fp_out<<rvi(j,0)<<' ';
+		}
+		fp_out <<idi<<' ';               // 5. allele id
+		fp_out <<wi<<' ';                // 6. fitness (w)
+		fp_out<<meanFitness<<' ';
+		fp_out <<age<<' ';               // 7. allele age
+		fp_out <<si<<' ';                // 8. selection coefficient (s)
+		fp_out <<(*it).second->isFixed();  // 9. is the allele ancestral (ever been fixed)
+		fp_out <<endl;      //new line
+		counter++;
+	}
+	
+	fts <<numGenerations<<' ';                           // 1. time (generations)
+	fts <<meanFitness<<' ';                                // 2. mean fitness
+	fts <<alleles.size()<<' ';                    // 3. number of different alleles
+	fts <<polymorphisms<<' ';                    // 4. number segregating alleles > 5% and < 95% freq
+	for(int i=0; i<environment::getOptimum().size(); i++){
+		fts <<environment::getOptimum()[i]<<' ';       // 4. polar coordinates optimum
+	}
+	if(ploidy==2){
+		fts <<areBalanced()<<' ';                           //12. maximum genotype fitness
+	}
+	//fts <<simTime - envRef.getTimeOfChange()<<' '; //13. time since last change in the environment's optimum
+	fts<<endl;
+	
+	
+	for (vector<genotype>::iterator it = genotypes.begin(); it != genotypes.end();++it){
+		if((*it).getFreq()<=0){
+			continue;
+		}
+		fsg<<numGenerations<<' '<<meanFitness<<' '<<(*it).toString()<<' '<<(*it).getFreq()<<' '<<(*it).getW()<<endl;
+	}
+  
+  
+}
+
+void population::printAllLoci(ofstream &fsl){
+	map<int,locus> allLoci;
+	for (unordered_map<string,allele *>::iterator it = alleles.begin();	it !=alleles.end(); ++it){
+		vector<locus> loci = (*it).second->getLoci();
+		for(int i=0; i<loci.size(); i++){
+			int id = loci[i].getId();
+			if(allLoci.find(id)==allLoci.end()){
+				allLoci.insert(std::make_pair(id,loci[i]));
+			}
+		}	
+	}
+	for(map<int,locus>::iterator iter = allLoci.begin(); iter!=allLoci.end(); ++iter){
+		locus loc = (*iter).second;
+		Matrix<double,Dynamic,1> phen = loc.getPhenotype();
+		fsl<<loc.getId()<<" "<<loc.getParentId()<<" "<<loc.getLocusOrder()<<" "<<phen(0,0);
+		for(int j=1; j<phen.rows(); j++){
+			fsl<<"_"<<phen(j,0);
+		}
+		fsl<<endl;
+		
+	}
+}
+
+bool population::areBalanced(){
+	  //check if polymorphism is stable
+	double maxWDiff = 0; //maximum difference between fitness of heterozygote and homozygote with max fitness max(wij-max(wi,wj))
+	vector<double> wVector;
+	polymorphisms = 0;
+	vector<double> frequencies;
+	for (unordered_map<string,allele *>::iterator it = alleles.begin();	it !=alleles.end(); ++it){
+		Matrix<double,Dynamic,1> rvi = (*it).second->getPosition();
+		double pi = (*it).second->getFrequency();
+		double wi = (*it).second->getW();
+		double d = 0.01;
+		if (pi > d && pi < (1-d)){
+			frequencies.push_back(pi);
+			polymorphisms++;
+			for(unordered_map<string,allele *>::iterator jt = it;	jt !=alleles.end(); ++jt){
+				double pj = (*jt).second->getFrequency();
+				if(pj > d && pi < (1-d)){
+					Matrix<double,Dynamic,1> rvj = (*jt).second->getPosition();
+					double wj = (*jt).second->getW();
+					double wij = environment::diploidFitness(rvi, rvj);
+					wVector.push_back(wij);
+					double diff = wij-max(wi,wj);
+					if(maxWDiff < diff){
+						maxWDiff = diff;
+					}
+				}
+			}
+		}
+	}
+	if ((polymorphisms > 1) && (1/N < maxWDiff/maxGenW)){
+		stability stbf(wVector,polymorphisms);
+		if (stbf.stable() == 1){
+			stableEquilibrium = 1;
+		}else{
+			stableEquilibrium = 0;
+		}
+	}else{
+		stableEquilibrium = 0;
+	}
+	return stableEquilibrium;
+}
+
+
+void population::mutate(ofstream &fse){
+	int mutationNumber = randomv::sampleBinomial(u*modelFunctions::getNumberLoci(),ploidy*N); //number of mutations that need to occur this round
+	if (mutationNumber == 0){
+		return;
+	}
+	int genotypeNumber = genotypes.size();
+	double Pmu[genotypeNumber];
+	unsigned int* mutations = new unsigned int [genotypeNumber];
+	int i=0;
+	for(vector<genotype>::iterator iter = genotypes.begin(); iter!=genotypes.end(); ++iter){
+		Pmu[i]=(*iter).getFreq();
+		i++;
+	}
+	randomv::sampleMultinomial(genotypes.size(),mutationNumber,Pmu,mutations); //figure out how the mutations are distributed accross genotypes
+	vector<genotype> mutants;
+	int counter = 0;
+	double newAlleleFrequency = 1./(ploidy*N);
+	for(vector<genotype>::iterator iter = genotypes.begin(); iter!=genotypes.end(); ++iter){
+		if(mutations[counter]==0){
+			counter++;
+			continue;
+		}
+		double pi = (*iter).getFreq();
+		for(int i = 0; i<mutations[counter]; i++){
+			if((*iter).getFreq()<=0){break;}
+			std::pair<genotype,allele *> newGenotype = (*iter).mutate(alleleCounter, numGenerations);
+			newGenotype.first.setFreq(1./N);
+			mutants.push_back(newGenotype.first);
+			allele &al = *(newGenotype.second);
+			al.setFixed(0);
+			al.setFrequency(newAlleleFrequency);
+			std::pair<string,allele *> p2 (al.getStringId(),newGenotype.second);
+			alleles.insert(p2); //add newly mutated allele to allele list
+			fse<<al.getId()<<' '<<al.getStringId()<<' '<<numGenerations;
+			Matrix<double,Dynamic,1> newRv = al.getPosition();
+			for(int j=0; j<newRv.rows();++j){
+				fse<<' '<<newRv(j,0);
+			}
+			fse<<' '<<al.getW()<<endl; //parent
+			alleleCounter++;
+			if((*iter).getFreq()>(1./N)){
+				(*iter).setFreq((*iter).getFreq()-(1./N));
+			}else{
+				(*iter).setFreq(0);
+			}
+
+		}
+		counter++;
+	}
+	delete [] mutations;
+	for (vector<genotype>::iterator it = mutants.begin(); it != mutants.end();++it){
+		genotypes.push_back((*it));
+	}
+}
+
+void population::computePossibleGenotypes(unordered_map<allele *, double,hash_allele> possibleAlleles, vector<allele *> currentAlleles, int currentDepth, double runningProbability){
+	if(currentDepth>ploidy){
+		exit(1);
+	}
+	if(currentDepth==ploidy){
+		genotype g (currentAlleles, 0);
+		g.computeFitness();
+		
+		if(genMap.find(g)!=genMap.end()){
+			genMap.at(g) +=runningProbability;
+		}else{
+			std::pair<genotype,double> pair (g,runningProbability);
+			genMap.insert(pair);
+		}
+	}else{
+		for(unordered_map<allele *, double,hash_allele>::iterator iter = possibleAlleles.begin(); iter!=possibleAlleles.end(); iter++){
+			vector<allele *> alleleTemp = currentAlleles;
+			alleleTemp.push_back((*iter).first);
+			//if(possibleAlleles.size()>1){
+			//}
+			computePossibleGenotypes(possibleAlleles, alleleTemp, currentDepth+1, runningProbability*(*iter).second);
+		}
+	}
+}
+
+
+void population::setAlleles(vector<allele *> a){
+	genotypes.clear();
+	unordered_map<allele *, double,hash_allele> temp;
+	for(int i=0; i<a.size(); i++){
+		std::pair<allele *,double> pair (a[i],a[i]->getFrequency());
+		temp.insert(pair);
+		std::pair<string,allele *> pair2 ((a[i])->getStringId(),a[i]);
+		alleles.insert(pair2);
+	}
+	vector<allele *> curA;
+	genMap.clear();
+	
+	computePossibleGenotypes(temp,curA,0,1);
+	for(unordered_map<genotype, double,hash_genotype>::iterator iter = genMap.begin(); iter!=genMap.end(); ++iter){
+		genotype g = (*iter).first;
+		g.setFreq((*iter).second);
+		g.computeFitness();
+		genotypes.push_back(g);
+	}
+}
+
+void population::computePossibleAlleles(genotype g, vector<locus> currentLoci, int currentPosition, int currentAllele, double runningProbability, ofstream &fse){ //take in a genotype and figure out the weights of each possible allele?
+	if(currentPosition>=g.getAlleles()[0]->getLoci().size()){
+		string str="";
+		std::ostringstream oss;
+		oss<<currentLoci[0].getId();
+		str += oss.str();
+		for(int i=1; i<currentLoci.size(); i++){
+			str+="_";
+			std::ostringstream oss2;
+			oss2<<currentLoci[i].getId();
+			str+=oss2.str();
+		}
+		std::pair<allele *,double> allelePair;
+		unordered_map<string,allele *>::iterator allelePos = alleles.find(str);
+		if(allelePos == alleles.end()){
+			allele * newAllele = new allele(currentLoci);
+			newAllele->setId(alleleCounter);
+			
+			
+			
+			newAllele->setFrequency(0);
+			newAllele->setFixed(0);
+			newAllele->setBirthday(numGenerations);
+			
+			std::pair<allele *,double> pair (newAllele, runningProbability * g.getFreq() / ploidy);
+			allelePair = pair;
+			
+			fse<<newAllele->getId()<<' '<<newAllele->getStringId()<<' '<<numGenerations;
+			Matrix<double,Dynamic,1> newRv = newAllele->getPosition();
+			for(int j=0; j<newRv.rows();++j){
+				fse<<' '<<newRv(j,0);
+			}
+			fse<<' '<<newAllele->getW()<<endl; //parent
+			alleleCounter++;
+			std::pair<string,allele *> newAllelePair (newAllele->getStringId(),newAllele);
+			alleles.insert(newAllelePair);
+		}else{
+			std::pair<allele *,double> pair ((*allelePos).second, runningProbability * g.getFreq() / ploidy);
+			allelePair = pair;
+		}
+		std::unordered_map<allele *,double>::iterator got = alleleMap.find (allelePair.first);
+		if(got != alleleMap.end()){
+			alleleMap.at(allelePair.first) += allelePair.second;
+		}else{
+			alleleMap.insert(allelePair);
+		}
+		return;
+		
+	}
+	for(int i=0; i<g.getAlleles().size();i++){
+		vector<allele *> als = g.getAlleles();
+		vector<locus> loci = als[i]->getLoci();
+		if(currentAllele==-1){
+			vector<locus> locusTemp = currentLoci;
+			locusTemp.push_back(loci[currentPosition]);
+			computePossibleAlleles(g, locusTemp, currentPosition+1, i, runningProbability, fse);
+		}else{
+			vector<locus> locusTemp = currentLoci;
+			locusTemp.push_back(loci[currentPosition]);
+			if(i==currentAllele){ //no recombination wanted
+				computePossibleAlleles(g, locusTemp, currentPosition+1, i, runningProbability * (1-modelFunctions::getRecombinationDistances()[currentPosition-1]), fse);
+			}else{ //recombination occured
+				computePossibleAlleles(g, locusTemp, currentPosition+1, i, runningProbability * modelFunctions::getRecombinationDistances()[currentPosition-1], fse);
+			}
+		}
+	}
+}
+
+void population::propagate(ofstream &fse){
+	alleleMap.clear();
+	//do recombination if necessary, get a set of all possible alleles and their weighted probabilities (recombination probability, fitness of parental genotype and frequency of parental genotype.
+	if(modelFunctions::isAllowRecombination() && ploidy==2){//only allow recombination if ploidy == 2, otherwise too messy
+		for (vector<genotype>::iterator it = genotypes.begin(); it != genotypes.end();++it){
+			if((*it).getFreq()<=0){
+				continue;
+			}
+			vector<locus> temp;
+			computePossibleAlleles((*it),temp,0,-1,1, fse);
+		}
+	}else{ // if we dont need recombination, just weight by genotype frequency
+		for (vector<genotype>::iterator it = genotypes.begin(); it != genotypes.end();++it){
+			if((*it).getFreq()<=0){
+				continue;
+			}
+			vector<allele *> localAlleles = (*it).getAlleles();
+			for(int alleleNum=0; alleleNum<localAlleles.size(); alleleNum++){ //having issues iterating through vector normally, so just indexing through
+				unordered_map<allele *, double,hash_allele>::iterator it3 = alleleMap.find(localAlleles[alleleNum]);
+				if(it3!=alleleMap.end()){
+					it3->second +=(*it).getFreq()/ploidy;
+				}else{
+					alleleMap.insert(std::make_pair(localAlleles[alleleNum], (*it).getFreq()/ploidy));
+				}
+			}
+		}
+	}
+	
+	
+	vector<allele *> alTemp;
+	genMap.clear();
+	computePossibleGenotypes(alleleMap, alTemp,0,1); //compute all possible genotypes and their frequencies from the set of alleles
+
+	
+	int counter = 0;
+	//build array of pd's
+	int genotypeNumber = genMap.size();
+	vector<genotype> genTemp;
+	double pds[genotypeNumber];
+	unsigned int* newGeneration = new unsigned int [genotypeNumber];
+	//initialize
+	for (int i = 0; i < genotypeNumber; i++){
+		newGeneration[i] = 0;
+		pds[i]=0;
+	}
+	//determine genotype weights
+	for(unordered_map<genotype, double, hash_genotype>::iterator iter2 = genMap.begin(); iter2!=genMap.end(); ++iter2){
+		genTemp.push_back((*iter2).first);
+		pds[counter]=(*iter2).second * (*iter2).first.getW();
+		counter++;
+	}
+	counter = 0;
+	//sample
+	randomv::sampleMultinomial(genotypeNumber, N, pds, newGeneration); //multinomial sampling for drift
+
+	//update genotypes present in population and their frequencies
+	maxGenW = 0;
+	vector<int> toRemove;
+	for(int i=0; i<genotypeNumber; i++){
+		
+		if (newGeneration[i] == 0){ //genotype extinction
+			toRemove.push_back(i);
+			
+		}else{
+			genTemp[i].setFreq((double) newGeneration[i]/ (double) (N) ); //assume fixed population size
+			if(genTemp[i].getW()>maxGenW){
+				maxGenW=genTemp[i].getW();
+			}
+		}
+	}
+	std::sort(toRemove.begin(), toRemove.end(), std::greater<int>());
+	for(int i=0; i<toRemove.size(); i++){
+		genTemp.erase(genTemp.begin()+toRemove[i]);
+	}
+	genotypes=genTemp; //update set of genotypes
+}
+
+void population::computeMeanFitness(){
+	meanFitness=0;
+	maxGenW=0;
+	for(vector<genotype>::iterator iter = genotypes.begin(); iter!=genotypes.end(); iter++){
+		meanFitness += (*iter).getW() * (*iter).getFreq();
+		if(maxGenW < (*iter).getW()){
+			maxGenW = (*iter).getW();
+		}
+	}
+}
+
+void population::updateAlleleFrequencies(){
+	unordered_map<allele *, double> alleleMap;
+	for(unordered_map<string, allele *>::iterator iter = alleles.begin(); iter!=alleles.end(); ++iter){
+		(*iter).second->setFrequency(0);
+	}
+	for(vector<genotype>::iterator iter = genotypes.begin(); iter!=genotypes.end(); iter++){
+		genotype gen = (*iter);
+		vector<allele *> alVec = (*iter).getAlleles();
+		for(int iter2 = 0; iter2 < alVec.size(); ++iter2){
+			unordered_map<allele *, double>::iterator it = alleleMap.find(alVec[iter2]);
+			if(it!=alleleMap.end()){
+				it->second = alleleMap[alVec[iter2]] + gen.getFreq()/ploidy;
+			}else{
+				allele * al = alVec[iter2];
+				double fd = double(gen.getFreq())/double(ploidy);
+				std::pair<allele *,double> pa (al,double(gen.getFreq())/double(ploidy));
+				alleleMap.insert(pa);
+			}
+		}
+	}
+
+	polymorphisms=0;
+	for(unordered_map<allele *, double>::iterator iter = alleleMap.begin(); iter!=alleleMap.end(); ++iter){
+		double freq = (*iter).second;
+		if(freq==0){
+			continue;
+		}
+		allele * temp =(*iter).first;
+		temp->setFrequency(freq);
+		unordered_map<string,allele *>::iterator iterPos = alleles.find(temp->getStringId());
+		if(iterPos==alleles.end()){
+			alleles.insert(std::make_pair(temp->getStringId(),temp));
+		}else{
+			(*(iterPos)).second->setFrequency(freq);
+		}
+		double d = 0.05;
+		if (freq > d && freq < (1-d)){
+			polymorphisms++;
+		}
+	}
+}

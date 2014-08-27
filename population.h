@@ -1,0 +1,79 @@
+/*
+ * population.h
+ *
+ *  Created on: Mar 16, 2013
+ *      Author: sandeep
+ */
+
+#ifndef POPULATION_H_
+#define POPULATION_H_
+#include <vector>
+#include <iostream>
+#include "genotype.h"
+#include "allele.h"
+#include "locus.h"
+#include "modelFunctions.h"
+#include "environment.h"
+#include <unordered_map>
+
+using namespace std;
+class population{
+public:
+	population(int ploidy);
+	void evolve(ofstream &fse);
+	double FindNeutralSphere();
+	void printStatus(ofstream &fp_out, ofstream &fts, ofstream &fsg);
+	void printInitialAlleles(ofstream &fse);
+	bool areBalanced();
+	void printAllLoci(ofstream &fsl);
+	int getAlleleCounter()  {		return alleleCounter;	}
+	void setAlleleCounter(int alleleCounter) {		this->alleleCounter = alleleCounter;	}
+	unordered_map<string,allele *> getAlleles()  {		return alleles;	}
+	void setAlleles(vector<allele *> a);
+	vector<genotype> getGenotypes()  {		return genotypes;	}
+	double getMeanFitness()  {		return meanFitness;	}
+	int getN()  {		return N;	}
+	void setN(int n) {		N = n;	}
+	int getNumGenerations()  {		return numGenerations;	}
+	void setNumGenerations(int numGenerations) {		this->numGenerations = numGenerations;	}
+	int getPloidy()  {		return ploidy;	}
+	void setPloidy(int ploidy) {		this->ploidy = ploidy;	}
+	int getPolymorphisms()  {		return polymorphisms;	}
+	void setPolymorphisms(int polymorphisms) {		this->polymorphisms = polymorphisms;	}
+	double getR0()  {		return r0;	}
+	void setR0(double r0) {		this->r0 = r0;	}
+	bool isStableEquilibrium()  {		return stableEquilibrium;	}
+	void setStableEquilibrium(bool stableEquilibrium) {		this->stableEquilibrium = stableEquilibrium;	}
+	double getU()  {		return u;	}
+	void setU(double u) {		this->u = u;	}
+	double         getMaxGenW(void) { return maxGenW; }
+
+//private:
+	void mutate(ofstream &fse);
+	void propagate(ofstream &fse);
+	double updatewm();  //! update mean fitness
+	void setGenotypes(vector<genotype> genotypes) {		this->genotypes = genotypes;	}
+	void computeMeanFitness(void);
+	void updateAlleleFrequencies(void);
+	void computePossibleAlleles(genotype g, vector<locus> currentLoci, int currentPosition, int currentAllele, double runningProbability, ofstream &fse);
+	void computePossibleGenotypes(unordered_map<allele *, double,hash_allele> possibleAlleles, vector<allele *> currentAlleles, int currentDepth, double runningProbability);
+	vector<genotype> genotypes;
+	unordered_map<string,allele *> alleles;
+
+	int numGenerations;
+	double meanFitness;
+	int N;
+	int ploidy;
+	double u; //per allele mutation rate
+	int alleleCounter;
+	bool stableEquilibrium; //! true if the present generation in a balanced state (for all alleles with p>d and and only if w>1/N)
+	int polymorphisms;     //! number of alleles with p>d
+	double r0;
+	double maxGenW;
+	unordered_map<genotype,double,hash_genotype> genMap;
+	unordered_map<allele *, double,hash_allele> alleleMap;
+
+};
+
+
+#endif /* POPULATION_H_ */

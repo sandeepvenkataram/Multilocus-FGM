@@ -1,0 +1,26 @@
+Multilocus Fisher's Geometric Model Simulator
+
+Sandeep Venkataram
+Petrov Lab, Stanford University
+2014
+
+This software is a highly customizable system designed to simulate adaptive walks using a modified version of Fisher's Geometric Model (Fisher 1930).
+
+The model is set up as follows:
+
+Each individual has a phenotype that is a point in coordinate space. Fitness is a function of the distance of this phenotype from the optimum (the origin). The number of dimensions to this coordinate space is user-defined (d).
+
+Each individual has a genotype determined by g alleles. Each allele contains l loci, each of which is defined by an d-dimensional point in coordinate space. Each allele has a "phenotype" that is determined by the phenotypyes of all constituent loci. The phenotype of a genotype is the average phenotype across all g alleles.
+
+d x 1 matrix for each locus, m
+d x d matrix for each covariance matrix, c_sub_m
+d x 1 matrix for phenotype of allele, a
+d x 1 matrix for the optimum
+d x d matrix for selection, sel
+d x 1 phenotype for genotype, p
+d x 1 matrix g = average of all a in a given genotype - optimum
+
+a = sum over all loci: (m_transpose * c_sub_m_transpose)_transpose
+
+p = g_transpose * sel * g
+
