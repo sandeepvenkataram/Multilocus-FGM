@@ -60,7 +60,6 @@ void population::printInitialAlleles(ofstream &fse){
 			fse<<' '<<newRv(j,0);
 		}
 		fse<<' '<<al.getW()<<endl; //parent
-		alleleCounter++;
 	}
 }
 
@@ -389,6 +388,16 @@ void population::propagate(ofstream &fse){
 		}
 	}
 	
+	cout<<"propagate at generation "<<numGenerations<<endl;
+	cout<<"current genotypes:"<<endl;
+	for(int i=0; i<genotypes.size(); i++){
+		cout<<genotypes[i].toString()<<" "<<genotypes[i].getFreq()<<endl;
+	}
+	cout<<"possible alleles:"<<endl;
+	for(unordered_map<allele *, double,hash_allele>::iterator iter = alleleMap.begin(); iter!=alleleMap.end(); ++iter){
+		allele &al = *((*iter).first);
+		cout<<al.getId()<<" "<<al.getStringId()<<" "<<(*iter).second<<endl;
+	}
 	
 	vector<allele *> alTemp;
 	genMap.clear();
@@ -407,7 +416,9 @@ void population::propagate(ofstream &fse){
 		pds[i]=0;
 	}
 	//determine genotype weights
+	cout<<"possible genotypes:"<<endl;
 	for(unordered_map<genotype, double, hash_genotype>::iterator iter2 = genMap.begin(); iter2!=genMap.end(); ++iter2){
+		cout<<(*iter2).first.toString()<<" "<<(*iter2).second<<" "<<(*iter2).first.getW()<<endl;
 		genTemp.push_back((*iter2).first);
 		pds[counter]=(*iter2).second * (*iter2).first.getW();
 		counter++;

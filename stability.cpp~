@@ -29,6 +29,8 @@ stability::stability(vector<double> ws, int d){
   gsl_permutation *p2 = gsl_permutation_alloc(n);     
   gsl_linalg_LU_decomp(A2,p2,&s2);
   determinantA = gsl_linalg_LU_det(A2,s2);
+  cout<<"Determinant A:\t"<<determinantA<<endl;
+  cout<<"Determinant Sum:\t"<<determinantSum<<endl;
   gsl_permutation_free(p2);
 }
 
@@ -87,7 +89,10 @@ int stability::delta_condition(gsl_matrix *M, int n)
       gsl_permutation_free(p);
       gsl_matrix_free(M_r);
     }
+    cout<<"Determinant A:\t"<<determinantA<<endl;
+  cout<<"Determinant Sum:\t"<<determinantSum<<endl;
   meanFitness = determinantA / determinantSum;
+  cout<<"Mean Fitness:\t"<<meanFitness<<endl;
   return condition;
 }
 
@@ -95,6 +100,7 @@ double stability::getMeanFitness(void){
 	if(meanFitness==0){
 		stable();
 	}
+	cout<<"Mean Fitness in getter:\t"<<meanFitness<<endl;
 	return meanFitness;
 }
 

@@ -388,7 +388,6 @@ void population::propagate(ofstream &fse){
 		}
 	}
 	
-	
 	vector<allele *> alTemp;
 	genMap.clear();
 	computePossibleGenotypes(alleleMap, alTemp,0,1); //compute all possible genotypes and their frequencies from the set of alleles
