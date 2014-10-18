@@ -448,7 +448,7 @@ void evolvePopulation(string outPrefix){
 	environment &envRef = environments[currentEnvironmentIndex];
 	for(int i=1; i<=maxTime; i++){
 	
-		if(numGensInCurrentEnvironment>=numGenerationInEnvironment[currentEnvironmentIndex]){
+		if(numGensInCurrentEnvironment>=numGenerationsInEnvironment[currentEnvironmentIndex]){
 			currentEnvironmentIndex++;
 			if(currentEnvironmentIndex >= environments.size()){
 				currentEnvironmentIndex=0;
@@ -468,9 +468,9 @@ void print1DMatrix(Matrix<double,Dynamic,1> d){
 		//cout<<d(i,0)<<"_";
 	}
 }
-
-void printPopInfo(ofstream &fp_out, ofstream &fts, ofstream &fse, ofstream &fsg){
-	pop->printStatus(fp_out,fts, fsg);
+/*
+void printPopInfo(ofstream &fp_out, ofstream &fts, ofstream &fse, ofstream &fsg, environment &envRef){
+	pop->printStatus(fp_out,fts, fsg, envRef);
 	//cout<<pop->getAlleleCounter()<<" "<<pop->getMeanFitness()<<" "<<pop->getN()<<" "<<pop->getNumGenerations()<<" "<<pop->getPloidy()<<" "<<pop->getR0()<<" "<<pop->getU()<<endl;
 	vector<genotype> genotypes = pop->getGenotypes();
 	//cout<<"Printing Genotypes!"<<endl;
@@ -527,7 +527,7 @@ void printPopInfo(ofstream &fp_out, ofstream &fts, ofstream &fse, ofstream &fsg)
 	}
 	
 }
-
+*/
 int main(int argc, char **argv){ //args = population file, environment file, parameters file, output prefix
 	if(argc<8){
 		cerr<<"Not Enough Arguments\nCorrect Arguments are: population file, parameters file, environment file, selection Matrix, covariance Matrices, optimal Environments, output prefix\n";
@@ -553,7 +553,7 @@ int main(int argc, char **argv){ //args = population file, environment file, par
 	//cout<<"importing covariance matrix"<<endl;
 	importCovarianceMatrices(covFile);
 	//cout<<"Done importing arguments!"<<endl;
-	initializePopulation(popFile, parFile, envFile, optFile);
+	initializePopulation(popFile, parFile, envFile);
 	//cout<<"Done initializing population!"<<endl;
 	
 	

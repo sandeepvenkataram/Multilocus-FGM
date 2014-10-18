@@ -40,7 +40,7 @@ void population::evolve(ofstream &fse, environment &envRef){
 	updateAlleleFrequencies();
 	computeMeanFitness();
 	if(ploidy==2){
-		areBalanced();
+		areBalanced(envRef);
 	}
 	numGenerations++;
 }
@@ -108,7 +108,7 @@ void population::printStatus(ofstream &fp_out, ofstream &fts, ofstream &fsg, env
 		fts <<envRef.getOptimum()[i]<<' ';       // 4. polar coordinates optimum
 	}
 	if(ploidy==2){
-		fts <<areBalanced()<<' ';                           //12. maximum genotype fitness
+		fts <<areBalanced(envRef)<<' ';                           //12. maximum genotype fitness
 	}
 	//fts <<simTime - envRef.getTimeOfChange()<<' '; //13. time since last change in the environment's optimum
 	fts<<endl;
@@ -147,7 +147,7 @@ void population::printAllLoci(ofstream &fsl){
 	}
 }
 
-bool population::areBalanced(){
+bool population::areBalanced(environment &envRef){
 	  //check if polymorphism is stable
 	double maxWDiff = 0; //maximum difference between fitness of heterozygote and homozygote with max fitness max(wij-max(wi,wj))
 	vector<double> wVector;
@@ -166,7 +166,7 @@ bool population::areBalanced(){
 				if(pj > d && pi < (1-d)){
 					Matrix<double,Dynamic,1> rvj = (*jt).second->getPosition();
 					double wj = (*jt).second->getW();
-					double wij = environment::diploidFitness(rvi, rvj);
+					double wij = envRef.diploidFitness(rvi, rvj);
 					wVector.push_back(wij);
 					double diff = wij-max(wi,wj);
 					if(maxWDiff < diff){

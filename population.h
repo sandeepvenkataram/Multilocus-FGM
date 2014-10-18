@@ -24,7 +24,7 @@ public:
 	double FindNeutralSphere();
 	void printStatus(ofstream &fp_out, ofstream &fts, ofstream &fsg, environment &envRef);
 	void printInitialAlleles(ofstream &fse);
-	bool areBalanced();
+	bool areBalanced(environment &envRef);
 	void printAllLoci(ofstream &fsl);
 	int getAlleleCounter()  {		return alleleCounter;	}
 	void setAlleleCounter(int alleleCounter) {		this->alleleCounter = alleleCounter;	}
