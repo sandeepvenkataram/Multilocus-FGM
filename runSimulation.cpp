@@ -54,7 +54,7 @@ double   sigma;      // sigma for gausian step in Wiener process
 double   alpha;      // alpha (scale) for Pareto step in Levy flight
 double   beta;       // beta (shape) for Pareto step in Levy flight
 
-vector<environment &> environments;
+vector<environment> environments;
 vector<int> numGenerationInEnvironment;
 
 //simulation run parameters
@@ -225,7 +225,7 @@ void importArguments(char* popFile, char* parFile, char* envFile, char* optFile)
 				exit(1);
 			}
 						
-			environment &envTemp;
+			environment envTemp;
 			envTemp.setOptimum(opt);
 			envTemp.setPeriodic(periodic);
 			envTemp.setF(F);
