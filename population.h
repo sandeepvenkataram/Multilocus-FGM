@@ -22,7 +22,7 @@ public:
 	population(int ploidy);
 	void evolve(ofstream &fse, environment &envRef);
 	double FindNeutralSphere();
-	void printStatus(ofstream &fp_out, ofstream &fts, ofstream &fsg);
+	void printStatus(ofstream &fp_out, ofstream &fts, ofstream &fsg, environment &envRef);
 	void printInitialAlleles(ofstream &fse);
 	bool areBalanced();
 	void printAllLoci(ofstream &fsl);

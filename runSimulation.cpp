@@ -55,7 +55,7 @@ double   alpha;      // alpha (scale) for Pareto step in Levy flight
 double   beta;       // beta (shape) for Pareto step in Levy flight
 
 vector<environment> environments;
-vector<int> numGenerationInEnvironment;
+vector<int> numGenerationsInEnvironment;
 
 //simulation run parameters
 int burnIn;          //generations to run before starting to print status
@@ -412,7 +412,7 @@ void initializePopulation(char* popFile, char* parFile, char* envFile){
 		exit(1);
 	}
 	//cout<<"Initialize Pop P"<<endl;
-	pop->setAlleles(initial);
+	pop->setAlleles(initial, environments[0]);
 	//cout<<"Initialize Pop P1"<<endl;
 	pop->setNumGenerations(0);
 	pop->setPloidy(ploidy);
@@ -441,7 +441,7 @@ void evolvePopulation(string outPrefix){
 	fsl<<"Id parentId locusOrder phenotype"<<endl;
 	fsg<<"NumGenerations meanFitness genotype frequency fitness"<<endl;
 	pop->printInitialAlleles(fse);
-	pop->printStatus(fp_out,fts, fsg);
+	pop->printStatus(fp_out,fts, fsg, environments[0]);
 	
 	int currentEnvironmentIndex=0;
 	int numGensInCurrentEnvironment = 0;
@@ -457,7 +457,7 @@ void evolvePopulation(string outPrefix){
 		}
 	
 		pop->evolve(fse, envRef);
-		pop->printStatus(fp_out,fts,fsg);
+		pop->printStatus(fp_out,fts,fsg, envRef);
 		numGensInCurrentEnvironment++;
 	}
 	pop->printAllLoci(fsl);
@@ -538,7 +538,7 @@ int main(int argc, char **argv){ //args = population file, environment file, par
 	char* envFile = argv[3];
 	char* selFile = argv[4];
 	char* covFile = argv[5];
-	char* optFile = argv[6]
+	char* optFile = argv[6];
 	string outPrefix = argv[7];
 	
 	gsl_rng_env_setup();
@@ -547,7 +547,7 @@ int main(int argc, char **argv){ //args = population file, environment file, par
 	Gt = gsl_rng_default;
 	randomv::Gr = gsl_rng_alloc (Gt);
 	//cout<<"Starting execution!"<<endl;
-	importArguments(popFile, parFile, envFile);
+	importArguments(popFile, parFile, envFile, optFile);
 	//cout<<"importing selection matrix"<<endl;
 	importSelectionMatrix(selFile);
 	//cout<<"importing covariance matrix"<<endl;

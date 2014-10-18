@@ -63,7 +63,7 @@ void population::printInitialAlleles(ofstream &fse){
 	}
 }
 
-void population::printStatus(ofstream &fp_out, ofstream &fts, ofstream &fsg){
+void population::printStatus(ofstream &fp_out, ofstream &fts, ofstream &fsg, environment &envRef){
 	/* unused
 	*  //make a histogram-vector for currently balanced alleles
 	*  vector<int> h; 
@@ -104,8 +104,8 @@ void population::printStatus(ofstream &fp_out, ofstream &fts, ofstream &fsg){
 	fts <<meanFitness<<' ';                                // 2. mean fitness
 	fts <<alleles.size()<<' ';                    // 3. number of different alleles
 	fts <<polymorphisms<<' ';                    // 4. number segregating alleles > 5% and < 95% freq
-	for(int i=0; i<environment::getOptimum().size(); i++){
-		fts <<environment::getOptimum()[i]<<' ';       // 4. polar coordinates optimum
+	for(int i=0; i<envRef.getOptimum().size(); i++){
+		fts <<envRef.getOptimum()[i]<<' ';       // 4. polar coordinates optimum
 	}
 	if(ploidy==2){
 		fts <<areBalanced()<<' ';                           //12. maximum genotype fitness

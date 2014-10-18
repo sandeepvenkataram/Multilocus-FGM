@@ -8,14 +8,7 @@
 using namespace Eigen;
 using namespace std;
 
-double environment::f;               //! Frequency
-double environment::phi;             //! Phase
-double environment::fixedTheta;      //! Fixed angle
-Matrix<double,Dynamic,1> environment::optimum; //! Coordinates for the optimum
-bool environment::periodic;          //! True if the environmental change is periodic
-int environment::timeOfChange;       //! Most recent time the optimum changed
-bool environment::changing;
-double environment::stepProb;
+
 
 void environment::setOptimum( Matrix<double,Dynamic,1> x ){ optimum = x; }
 void environment::setPeriodic( bool x ){ periodic = x; }

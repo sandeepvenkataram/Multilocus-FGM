@@ -47,6 +47,8 @@ class environment{
 		int timeOfChange;       //! Most recent time the optimum changed
 		bool changing;
 		double stepProb;
+		
+		
 };
 
 
