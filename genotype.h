@@ -13,22 +13,23 @@
 #include "environment.h"
 #include <vector>
 #include<Eigen/Core>
+#include "environment.h"
 using namespace Eigen;
 using namespace std;
 
 
 class genotype{
 	public:
-		genotype(vector<allele *> al, double myFreq);
+		genotype(vector<allele *> al, double myFreq, environment &envRef);
 		vector<allele *> getAlleles (void) const;
 		void setAlleles(vector<allele *> alleles);
 		double getFreq(void) const;
 		void setFreq(double freq);
 		double getW(void) const;
 		Matrix<double,Dynamic,1> getPhenotype() const;
-		void computeFitness();
+		void computeFitness(environment &envRef);
 		allele * getRecombinedAllele();
-		std::pair<genotype,allele *> mutate(int currentAlleleCount, int currentGen);
+		std::pair<genotype,allele *> mutate(int currentAlleleCount, int currentGen, environment &envRef);
 		size_t getHashValue(void) const {return hashValue;}
 		bool operator==(const genotype &x) const;
 		bool operator!=(const genotype &x) const;

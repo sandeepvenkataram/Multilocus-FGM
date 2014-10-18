@@ -35,12 +35,16 @@ void environment::setStepProb(double p){stepProb=p;}
 void environment::setChanging(bool c){changing=c;}
 
 
+environment::environment(){
+
+}
+
 void environment::change(int t){ //this is broken with the current implementation as fitness is only calculated when the new allele is created.
   return;
   double r;
   double theta;
   Matrix<double,Dynamic,1> move;
-  if(getPeriodic() == true){
+  if(getPeriodic() == true){ //moving optima never tested, legacy code from Sellis et al 2011
     /*
       Simple harmonic motion
       f:   frequency

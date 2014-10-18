@@ -20,7 +20,7 @@ using namespace std;
 class population{
 public:
 	population(int ploidy);
-	void evolve(ofstream &fse);
+	void evolve(ofstream &fse, environment &envRef);
 	double FindNeutralSphere();
 	void printStatus(ofstream &fp_out, ofstream &fts, ofstream &fsg);
 	void printInitialAlleles(ofstream &fse);
@@ -29,7 +29,7 @@ public:
 	int getAlleleCounter()  {		return alleleCounter;	}
 	void setAlleleCounter(int alleleCounter) {		this->alleleCounter = alleleCounter;	}
 	unordered_map<string,allele *> getAlleles()  {		return alleles;	}
-	void setAlleles(vector<allele *> a);
+	void setAlleles(vector<allele *> a, environment &envRef);
 	vector<genotype> getGenotypes()  {		return genotypes;	}
 	double getMeanFitness()  {		return meanFitness;	}
 	int getN()  {		return N;	}
@@ -49,14 +49,14 @@ public:
 	double         getMaxGenW(void) { return maxGenW; }
 
 //private:
-	void mutate(ofstream &fse);
-	void propagate(ofstream &fse);
+	void mutate(ofstream &fse, environment &envRef);
+	void propagate(ofstream &fse, environment &envRef);
 	double updatewm();  //! update mean fitness
 	void setGenotypes(vector<genotype> genotypes) {		this->genotypes = genotypes;	}
 	void computeMeanFitness(void);
 	void updateAlleleFrequencies(void);
 	void computePossibleAlleles(genotype g, vector<locus> currentLoci, int currentPosition, int currentAllele, double runningProbability, ofstream &fse);
-	void computePossibleGenotypes(unordered_map<allele *, double,hash_allele> possibleAlleles, vector<allele *> currentAlleles, int currentDepth, double runningProbability);
+	void computePossibleGenotypes(unordered_map<allele *, double,hash_allele> possibleAlleles, vector<allele *> currentAlleles, int currentDepth, double runningProbability, environment &envRef);
 	vector<genotype> genotypes;
 	unordered_map<string,allele *> alleles;
 

@@ -9,7 +9,6 @@
 #define ALLELE_H_
 #include <vector>
 #include "locus.h"
-#include "environment.h"
 #include "modelFunctions.h"
 #include<Eigen/Core>
 using namespace Eigen;
@@ -19,7 +18,7 @@ using namespace std;
 class allele{
 	public:
 		allele(void);
-		allele(vector<locus> myLoci);
+		allele(vector<locus> myLoci/*, environment &envRef*/);
 
 		allele* mutate();
 
@@ -52,8 +51,8 @@ class allele{
 		bool fixed;
 		string uniqueId;
 		size_t hashValue;
-		void setLoci(vector<locus> loci);
-		void computePositionFromLoci();
+		void setLoci(vector<locus> loci/*, environment &envRef*/);
+		void computePositionFromLoci(/*environment &envRef*/);
 		void setPosition(Matrix<double,Dynamic,1> position);
 		
 };

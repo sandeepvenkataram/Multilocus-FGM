@@ -32,11 +32,11 @@ population::population(int ploidy){
 	setPloidy(ploidy);	
 }
 
-void population::evolve(ofstream &fse){
-	mutate(fse);
+void population::evolve(ofstream &fse, environment &envRef){
+	mutate(fse, envRef);
 	updateAlleleFrequencies();
 	
-	propagate(fse);
+	propagate(fse, envRef);
 	updateAlleleFrequencies();
 	computeMeanFitness();
 	if(ploidy==2){
@@ -190,7 +190,7 @@ bool population::areBalanced(){
 }
 
 
-void population::mutate(ofstream &fse){
+void population::mutate(ofstream &fse, environment &envRef){
 	int mutationNumber = randomv::sampleBinomial(u*modelFunctions::getNumberLoci(),ploidy*N); //number of mutations that need to occur this round
 	if (mutationNumber == 0){
 		return;
@@ -215,7 +215,7 @@ void population::mutate(ofstream &fse){
 		double pi = (*iter).getFreq();
 		for(int i = 0; i<mutations[counter]; i++){
 			if((*iter).getFreq()<=0){break;}
-			std::pair<genotype,allele *> newGenotype = (*iter).mutate(alleleCounter, numGenerations);
+			std::pair<genotype,allele *> newGenotype = (*iter).mutate(alleleCounter, numGenerations, envRef);
 			newGenotype.first.setFreq(1./N);
 			mutants.push_back(newGenotype.first);
 			allele &al = *(newGenotype.second);
@@ -245,13 +245,13 @@ void population::mutate(ofstream &fse){
 	}
 }
 
-void population::computePossibleGenotypes(unordered_map<allele *, double,hash_allele> possibleAlleles, vector<allele *> currentAlleles, int currentDepth, double runningProbability){
+void population::computePossibleGenotypes(unordered_map<allele *, double,hash_allele> possibleAlleles, vector<allele *> currentAlleles, int currentDepth, double runningProbability, environment &envRef){
 	if(currentDepth>ploidy){
 		exit(1);
 	}
 	if(currentDepth==ploidy){
-		genotype g (currentAlleles, 0);
-		g.computeFitness();
+		genotype g (currentAlleles, 0, envRef);
+		g.computeFitness(envRef);
 		
 		if(genMap.find(g)!=genMap.end()){
 			genMap.at(g) +=runningProbability;
@@ -265,13 +265,13 @@ void population::computePossibleGenotypes(unordered_map<allele *, double,hash_al
 			alleleTemp.push_back((*iter).first);
 			//if(possibleAlleles.size()>1){
 			//}
-			computePossibleGenotypes(possibleAlleles, alleleTemp, currentDepth+1, runningProbability*(*iter).second);
+			computePossibleGenotypes(possibleAlleles, alleleTemp, currentDepth+1, runningProbability*(*iter).second, envRef);
 		}
 	}
 }
 
 
-void population::setAlleles(vector<allele *> a){
+void population::setAlleles(vector<allele *> a, environment &envRef){
 	genotypes.clear();
 	unordered_map<allele *, double,hash_allele> temp;
 	for(int i=0; i<a.size(); i++){
@@ -283,11 +283,11 @@ void population::setAlleles(vector<allele *> a){
 	vector<allele *> curA;
 	genMap.clear();
 	
-	computePossibleGenotypes(temp,curA,0,1);
+	computePossibleGenotypes(temp,curA,0,1, envRef);
 	for(unordered_map<genotype, double,hash_genotype>::iterator iter = genMap.begin(); iter!=genMap.end(); ++iter){
 		genotype g = (*iter).first;
 		g.setFreq((*iter).second);
-		g.computeFitness();
+		g.computeFitness(envRef);
 		genotypes.push_back(g);
 	}
 }
@@ -360,7 +360,7 @@ void population::computePossibleAlleles(genotype g, vector<locus> currentLoci, i
 	}
 }
 
-void population::propagate(ofstream &fse){
+void population::propagate(ofstream &fse, environment &envRef){
 	alleleMap.clear();
 	//do recombination if necessary, get a set of all possible alleles and their weighted probabilities (recombination probability, fitness of parental genotype and frequency of parental genotype.
 	if(modelFunctions::isAllowRecombination() && ploidy==2){//only allow recombination if ploidy == 2, otherwise too messy
@@ -390,7 +390,7 @@ void population::propagate(ofstream &fse){
 	
 	vector<allele *> alTemp;
 	genMap.clear();
-	computePossibleGenotypes(alleleMap, alTemp,0,1); //compute all possible genotypes and their frequencies from the set of alleles
+	computePossibleGenotypes(alleleMap, alTemp,0,1, envRef); //compute all possible genotypes and their frequencies from the set of alleles
 
 	
 	int counter = 0;

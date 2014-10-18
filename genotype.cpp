@@ -14,10 +14,10 @@
 using namespace Eigen;
 using namespace std;
 
-genotype::genotype(vector<allele *> al, double myFreq) {
+genotype::genotype(vector<allele *> al, double myFreq, environment &envRef) {
 	alleles = al;
 	freq = myFreq;
-	computeFitness(); 
+	computeFitness(envRef); 
 	
 	vector<int> ids;
 	for(vector<allele *>::const_iterator iter = alleles.begin(); iter!=alleles.end(); ++iter){
@@ -53,13 +53,13 @@ size_t hash_genotype::operator()(const genotype *g ) const {
 	return hash ^ (hash >> 16);
 }
 
-void genotype::computeFitness(){
+void genotype::computeFitness(environment &envRef){
 	Matrix<double,Dynamic,1> res=alleles[0]->getPosition();
 	for(int i=1; i<alleles.size(); i++){
 		res = modelFunctions::add(res,alleles[i]->getPosition());
 	}
 	res(0,0)=res(0,0)/alleles.size();
-	fW=environment::fW(res);
+	fW=envRef.fW(res);
 	phenotype = res;
 }
 
@@ -102,7 +102,7 @@ allele * genotype::getRecombinedAllele(){
 
 }
 
-std::pair<genotype,allele *> genotype::mutate(int currentAlleleCount, int currentGen){
+std::pair<genotype,allele *> genotype::mutate(int currentAlleleCount, int currentGen, environment &envRef){
 	//cout<<"Genotype mutate A"<<endl;
 	int al = randomv::sampleUniformInt(alleles.size());
 	//cout<<"Genotype mutate B"<<endl;
@@ -123,7 +123,7 @@ std::pair<genotype,allele *> genotype::mutate(int currentAlleleCount, int curren
 		count++;
 	}
 	//cout<<"Genotype mutate F"<<endl;
-	genotype g(newAlleles, 0);
+	genotype g(newAlleles, 0, envRef);
 	//cout<<"Genotype mutate G"<<endl;
 	std::pair<genotype,allele *> pair (g,mutant);
 	//cout<<"Genotype mutate H"<<endl;

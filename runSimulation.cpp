@@ -54,6 +54,9 @@ double   sigma;      // sigma for gausian step in Wiener process
 double   alpha;      // alpha (scale) for Pareto step in Levy flight
 double   beta;       // beta (shape) for Pareto step in Levy flight
 
+vector<environment &> environments;
+vector<int> numGenerationInEnvironment;
+
 //simulation run parameters
 int burnIn;          //generations to run before starting to print status
 int step;            //print status every step generations
@@ -61,7 +64,7 @@ bool allowRecombination;
 int numDimensions;
 int numberLoci;
 
-void importArguments(char* popFile, char* parFile, char* envFile){
+void importArguments(char* popFile, char* parFile, char* envFile, char* optFile){
 	string line;
 	ifstream populationInit(parFile);
 	if(populationInit.is_open()){
@@ -191,15 +194,52 @@ void importArguments(char* popFile, char* parFile, char* envFile){
 	
 	//read input files
 	//environment
-	Matrix<double,Dynamic,1> opt(numDimensions,1); // optimum always at origin without loss of generality.
+	 // optimum always at origin without loss of generality.
 
-	environment::setOptimum(opt);
-	environment::setPeriodic(periodic);
-	environment::setF(F);
-	environment::setFixedTheta(fixedTheta);
-	environment::setPhi(P);
-	environment::setChanging(changing);
-	environment::setStepProb(stepProb);
+	
+	
+	ifstream optimumInit(optFile);
+	if(optimumInit.is_open()){
+		while(! optimumInit.eof()){
+			getline(optimumInit, line);
+			if (line.size() < 1 || line.at(0) == '#'){
+				continue; //skip comments and empty lines
+			}
+			stringstream sstr(line);
+			int numGensInEnvironment;
+			sstr >> numGensInEnvironment;
+			
+			Matrix<double,Dynamic,1> opt(numDimensions,1);
+			
+			int currentPosition = 0;
+			
+			while(!sstr.eof()){
+				double d;
+				sstr >> d;
+				opt(currentPosition,0)=d;
+				currentPosition +=1;
+			}
+			
+			if(currentPosition!=numDimensions){
+				cerr<<"Optimum had incorrect values for given number of dimensions"<<endl;
+				exit(1);
+			}
+						
+			environment &envTemp;
+			envTemp.setOptimum(opt);
+			envTemp.setPeriodic(periodic);
+			envTemp.setF(F);
+			envTemp.setFixedTheta(fixedTheta);
+			envTemp.setPhi(P);
+			envTemp.setChanging(changing);
+			envTemp.setStepProb(stepProb);
+			
+			environments.push_back(envTemp);
+			numGenerationsInEnvironment.push_back(numGensInEnvironment);
+			
+		}
+	}
+	
 	
 	
 	modelFunctions::setFitnessFunction('g');
@@ -402,9 +442,23 @@ void evolvePopulation(string outPrefix){
 	fsg<<"NumGenerations meanFitness genotype frequency fitness"<<endl;
 	pop->printInitialAlleles(fse);
 	pop->printStatus(fp_out,fts, fsg);
+	
+	int currentEnvironmentIndex=0;
+	int numGensInCurrentEnvironment = 0;
+	environment &envRef = environments[currentEnvironmentIndex];
 	for(int i=1; i<=maxTime; i++){
-		pop->evolve(fse);
+	
+		if(numGensInCurrentEnvironment>=numGenerationInEnvironment[currentEnvironmentIndex]){
+			currentEnvironmentIndex++;
+			if(currentEnvironmentIndex >= environments.size()){
+				currentEnvironmentIndex=0;
+			}
+			envRef = environments[currentEnvironmentIndex];
+		}
+	
+		pop->evolve(fse, envRef);
 		pop->printStatus(fp_out,fts,fsg);
+		numGensInCurrentEnvironment++;
 	}
 	pop->printAllLoci(fsl);
 }
@@ -475,8 +529,8 @@ void printPopInfo(ofstream &fp_out, ofstream &fts, ofstream &fse, ofstream &fsg)
 }
 
 int main(int argc, char **argv){ //args = population file, environment file, parameters file, output prefix
-	if(argc<7){
-		cerr<<"Not Enough Arguments\nCorrect Arguments are: population file, parameters file, environment file, selection Matrix, covariance Matrices, output prefix\n";
+	if(argc<8){
+		cerr<<"Not Enough Arguments\nCorrect Arguments are: population file, parameters file, environment file, selection Matrix, covariance Matrices, optimal Environments, output prefix\n";
 		return(1);
 	}
 	char* popFile = argv[1];
@@ -484,7 +538,8 @@ int main(int argc, char **argv){ //args = population file, environment file, par
 	char* envFile = argv[3];
 	char* selFile = argv[4];
 	char* covFile = argv[5];
-	string outPrefix = argv[6];
+	char* optFile = argv[6]
+	string outPrefix = argv[7];
 	
 	gsl_rng_env_setup();
 	gsl_rng_default_seed = (unsigned long)time(0)*getpid();
@@ -498,8 +553,10 @@ int main(int argc, char **argv){ //args = population file, environment file, par
 	//cout<<"importing covariance matrix"<<endl;
 	importCovarianceMatrices(covFile);
 	//cout<<"Done importing arguments!"<<endl;
-	initializePopulation(popFile, parFile, envFile);
+	initializePopulation(popFile, parFile, envFile, optFile);
 	//cout<<"Done initializing population!"<<endl;
+	
+	
 	evolvePopulation(outPrefix);
 	
 	

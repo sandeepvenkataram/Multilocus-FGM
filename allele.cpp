@@ -34,7 +34,7 @@ int allele::getId() const{	return id;	}
 void allele::setId(int id) {	this->id = id;	}
 vector<locus> allele::getLoci() {	return loci;	}
 Matrix<double,Dynamic,1> allele::getPosition() {	return position;	}
-void allele::setLoci(vector<locus> loci) {	this->loci = loci;	computePositionFromLoci(); computeStringId();}
+void allele::setLoci(vector<locus> loci/*, environment &envRef*/) {	this->loci = loci;	computePositionFromLoci(/*envRef*/); computeStringId();}
 void allele::setPosition(Matrix<double,Dynamic,1> position) {	this->position = position;	}
 
 
@@ -50,8 +50,8 @@ size_t hash_allele::operator()(const allele *a ) const{
 	return hash ^ (hash >> 16);
 }
 
-allele::allele(vector<locus> myLoci){
-	setLoci(myLoci);
+allele::allele(vector<locus> myLoci/*, environment &envRef*/){
+	setLoci(myLoci/*, envRef*/);
 	//cout<<getStringId()<<endl;
 	//computeStringId();
 }
@@ -103,7 +103,7 @@ allele* allele::mutate(){ //guaranteed mutation, just need to pick a locus to mu
 	return temp;
 }
 
-void allele::computePositionFromLoci(){
+void allele::computePositionFromLoci(/*environment &envRef*/){
 	//cout<<"ComputePositionFromLoci A"<<endl;
 	
 	int numDimensions = modelFunctions::getNumDimensions();
@@ -138,7 +138,7 @@ void allele::computePositionFromLoci(){
 	
 	position = modelFunctions::cartesianToPolar(cartesianPhenotype);
 	//cout<<"ComputePositionFromLoci E"<<endl;
-	setW(environment::fW(position));
+	//setW(envRef.fW(position));
 	
 	
 	
