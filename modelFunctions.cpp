@@ -141,6 +141,16 @@ double modelFunctions::fTheta(){
 
 Matrix<double,Dynamic,1> modelFunctions::getMutationVector(int numDimensions){
 	double fr = fR();
+	
+	if(numDimensions == 1){
+		Matrix<double,Dynamic,1> mutationVector(numDimensions,1);
+		mutationVector(0,0)=fr;
+		if(randomv::sampleUniform()<0.5){
+				mutationVector(0,0) = -1*mutationVector(0,0);
+		}
+		return mutationVector;
+	}
+	
 	double direction[numDimensions];
 	randomv::sampleDirVector(numDimensions, direction);
 	std::vector<double> result (direction, direction+sizeof(direction)/sizeof(double));
@@ -158,9 +168,12 @@ Matrix<double,Dynamic,1> modelFunctions::getMutationVector(int numDimensions){
 Matrix<double,Dynamic,1> modelFunctions::cartesianToPolar(Matrix<double,Dynamic,1> cart){
 	double r = 0;
 	int numDim = cart.rows();
-	Matrix<double,Dynamic,1> tempMat(numDimensions,1);
-	tempMat.fill(0);
-	Matrix<double,Dynamic,1> result(numDimensions,1);
+	if(numDim==1){
+		return cart;
+	}
+	Matrix<double,Dynamic,1> tempMat(numDim-1,1);
+	tempMat.fill(cart(numDim-1,0)*cart(numDim-1,0));
+	Matrix<double,Dynamic,1> result(numDim,1);
 	result.fill(0);
 	for(int i=0; i<cart.rows();i++){
 		r+=cart(i,0)*cart(i,0);
@@ -171,7 +184,7 @@ Matrix<double,Dynamic,1> modelFunctions::cartesianToPolar(Matrix<double,Dynamic,
 	}
 	result(0,0)=r;
 	
-	for(int i=cart.rows()-1; i>=0;i--){
+	for(int i=cart.rows()-2; i>=0;i--){
 		double val = cart(i,0)*cart(i,0);
 		for(int j=0;j<=i;j++){
 			tempMat(j,0)+=val;
@@ -179,7 +192,7 @@ Matrix<double,Dynamic,1> modelFunctions::cartesianToPolar(Matrix<double,Dynamic,
 	}
 	//cout<<"cartToPolar tempMat"<<endl;
 	//cout<<tempMat<<endl;
-	for(int j=1;j<cart.rows();j++){
+	for(int j=1;j<cart.rows()-1;j++){
 		if(tempMat(j,0)==0){
 			result(j,0)=0;
 		}else{
@@ -187,17 +200,29 @@ Matrix<double,Dynamic,1> modelFunctions::cartesianToPolar(Matrix<double,Dynamic,
 			//cout<<cart(j-1,0)<<"\t"<<pow(tempMat(j-1,0),0.5)<<"\t"<<result(j,0)<<endl;
 		}
 	}
-	if(cart(numDim-1,0)!=0 && cart(numDim-1,0)<0){
-		result(numDim-1,0)= 2*M_PI-result(numDim-1,0);
+	
+	double denom = pow(pow(cart(numDim-1,0),2)+pow(cart(numDim-2,0),2),0.5);
+	if(denom!=0){
+		result(numDim-1,0)=acos(cart(numDim-2,0)/denom);
 	}
+	
+	if(cart(numDim-1,0)<0){
+		result(numDim-1,0) = 2*M_PI-result(numDim-1,0);
+	}
+	
 	return result;
 
 }
 
 Matrix<double,Dynamic,1> modelFunctions::polarToCartesian(Matrix<double,Dynamic,1> polar){
 	double r = polar(0,0);
+	int numDim = polar.rows();
+	if(numDim==1){
+		return polar;
+	}
+	
 	//cout<<"PolarToCart A"<<endl;
-	Matrix<double,Dynamic,1> Cartesian(numDimensions,1);
+	Matrix<double,Dynamic,1> Cartesian(numDim,1);
 	//cout<<"PolarToCart B"<<endl;
 	for(int i=1;i<polar.rows();i++){
 		double res = r;

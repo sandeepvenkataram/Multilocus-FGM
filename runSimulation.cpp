@@ -226,14 +226,18 @@ void importArguments(char* popFile, char* parFile, char* envFile, char* optFile)
 			}
 						
 			environment envTemp;
-			envTemp.setOptimum(opt);
+			envTemp.setOptimum(modelFunctions::cartesianToPolar(opt));
 			envTemp.setPeriodic(periodic);
 			envTemp.setF(F);
 			envTemp.setFixedTheta(fixedTheta);
 			envTemp.setPhi(P);
 			envTemp.setChanging(changing);
 			envTemp.setStepProb(stepProb);
-			
+			cout<<"reading in optimum number "<<environments.size()<<endl;
+			cout<<"cartesian input:"<<endl;
+			cout<<opt<<endl;
+			cout<<"polar state:"<<endl;
+			cout<<envTemp.getOptimum()<<endl;
 			environments.push_back(envTemp);
 			numGenerationsInEnvironment.push_back(numGensInEnvironment);
 			
@@ -445,21 +449,42 @@ void evolvePopulation(string outPrefix){
 	
 	int currentEnvironmentIndex=0;
 	int numGensInCurrentEnvironment = 0;
-	environment &envRef = environments[currentEnvironmentIndex];
+	environment *envRef = &environments[currentEnvironmentIndex];
+	
+	/*cout<<"Current num environments is: "<<environments.size()<<endl;
+	for(int i=0; i<environments.size(); i++){
+			cout<<"environment "<<i<<" with num generations "<<numGenerationsInEnvironment[i]<<endl;
+			Matrix<double,Dynamic,1> currOpt = environments[i].getOptimum();
+			cout<<currOpt<<endl;
+	}*/
+	
+	//exit(0);
 	for(int i=1; i<=maxTime; i++){
 	
 		if(numGensInCurrentEnvironment>=numGenerationsInEnvironment[currentEnvironmentIndex]){
+			
 			currentEnvironmentIndex++;
 			if(currentEnvironmentIndex >= environments.size()){
 				currentEnvironmentIndex=0;
 			}
-			envRef = environments[currentEnvironmentIndex];
+			
+			envRef = &environments[currentEnvironmentIndex];
+			//cout<<"switching to environment "<<currentEnvironmentIndex<<" in generation "<<i<<" with phenotype\n"<<envRef->getOptimum()<<endl;
+			numGensInCurrentEnvironment=0;
 		}
 	
-		pop->evolve(fse, envRef);
-		pop->printStatus(fp_out,fts,fsg, envRef);
+		pop->evolve(fse, *envRef);
+		pop->printStatus(fp_out,fts,fsg,*envRef);
 		numGensInCurrentEnvironment++;
 	}
+	
+	/*cout<<"End of simulation current num environments is: "<<environments.size()<<endl;
+	for(int i=0; i<environments.size(); i++){
+			cout<<"environment "<<i<<" with num generations "<<numGenerationsInEnvironment[i]<<endl;
+			Matrix<double,Dynamic,1> currOpt = environments[i].getOptimum();
+			cout<<currOpt<<endl;
+	}*/
+	
 	pop->printAllLoci(fsl);
 }
 
@@ -541,8 +566,14 @@ int main(int argc, char **argv){ //args = population file, environment file, par
 	char* optFile = argv[6];
 	string outPrefix = argv[7];
 	
+	int hash = 0;
+	int offset = 'a' - 1;
+	for(string::const_iterator it=outPrefix.begin(); it!=outPrefix.end(); ++it) {
+	hash = hash << 1 ^ (*it - offset);
+	}
+	
 	gsl_rng_env_setup();
-	gsl_rng_default_seed = (unsigned long)time(0)*getpid();
+	gsl_rng_default_seed = (unsigned long)time(0)*hash;
 	const gsl_rng_type *Gt;
 	Gt = gsl_rng_default;
 	randomv::Gr = gsl_rng_alloc (Gt);
