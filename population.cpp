@@ -74,7 +74,7 @@ void population::printStatus(ofstream &fp_out, ofstream &fts, ofstream &fsg, env
 		double wi = (*it).second->getW();
 		double si = 0;
 		if (abs(wi - meanFitness) < numeric_limits<double>::min()){
-			si = 1;
+			si = 0;
 		}else{
 			si = wi/meanFitness-1;
 		}
@@ -471,11 +471,12 @@ void population::updateAlleleFrequencies(){
 	polymorphisms=0;
 	for(unordered_map<allele *, double>::iterator iter = alleleMap.begin(); iter!=alleleMap.end(); ++iter){
 		double freq = (*iter).second;
+		allele * temp =(*iter).first;
+		temp->setFrequency(freq);
+		temp->setW(0);
 		if(freq==0){
 			continue;
 		}
-		allele * temp =(*iter).first;
-		temp->setFrequency(freq);
 		unordered_map<string,allele *>::iterator iterPos = alleles.find(temp->getStringId());
 		if(iterPos==alleles.end()){
 			alleles.insert(std::make_pair(temp->getStringId(),temp));
@@ -485,6 +486,14 @@ void population::updateAlleleFrequencies(){
 		double d = 0.05;
 		if (freq > d && freq < (1-d)){
 			polymorphisms++;
+		}
+	}
+	for(vector<genotype>::iterator iter = genotypes.begin(); iter!=genotypes.end(); iter++){
+		genotype gen = (*iter);
+		vector<allele *> alVec = (*iter).getAlleles();
+		for(int iter2 = 0; iter2 < alVec.size(); ++iter2){
+			double localFit = gen.getW()*gen.getFreq()/alVec.size();
+			alVec[iter2]->setW(alVec[iter2]->getW()+localFit/alVec[iter2]->getFrequency());
 		}
 	}
 }
