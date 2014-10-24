@@ -233,11 +233,11 @@ void importArguments(char* popFile, char* parFile, char* envFile, char* optFile)
 			envTemp.setPhi(P);
 			envTemp.setChanging(changing);
 			envTemp.setStepProb(stepProb);
-			cout<<"reading in optimum number "<<environments.size()<<endl;
+			/*cout<<"reading in optimum number "<<environments.size()<<endl;
 			cout<<"cartesian input:"<<endl;
 			cout<<opt<<endl;
 			cout<<"polar state:"<<endl;
-			cout<<envTemp.getOptimum()<<endl;
+			cout<<envTemp.getOptimum()<<endl;*/
 			environments.push_back(envTemp);
 			numGenerationsInEnvironment.push_back(numGensInEnvironment);
 			
